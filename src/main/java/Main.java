@@ -15,7 +15,7 @@ public class Main {
 
             Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
             System.out.println("accepted new connection");
-            String response;
+            String response = "";
             try {
                 InputStream is = clientSocket.getInputStream();
                 BufferedInputStream bis = new BufferedInputStream(is);
@@ -34,6 +34,16 @@ public class Main {
                     response = "HTTP/1.1 200 OK\r\n" +
                             "Content-Type: text/plain\r\n" +
                             "Content-Length: " + sz + "\r\n\r\n" + content;
+                } else if (statusLine[1].startsWith("/user-agent")) {
+                    for (String part : parts) {
+                        if (part.toLowerCase().startsWith("user-agent: ")) {
+                            String content = part.substring(12);
+                            int sz = content.length();
+                            response = "HTTP/1.1 200 OK\r\n" +
+                                    "Content-Type: text/plain\r\n" +
+                                    "Content-Length: " + sz + "\r\n\r\n" + content;
+                        }
+                    }
                 } else {
                     response = "HTTP/1.1 404 Not Found\r\n\r\n";
                 }
