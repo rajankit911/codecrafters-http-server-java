@@ -1,4 +1,6 @@
 import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
@@ -9,7 +11,20 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class Main {
+    public static String baseDir = "";
     public static void main(String[] args) {
+        if (args.length > 0) {
+            if (args[0].startsWith("--")) {
+                String flagName = args[0].substring(2); // Remove '--'
+                String flagValue = args[1];
+                System.out.println("Flag: " + flagName + ", Value: " + flagValue);
+                // Add logic to handle specific flags
+                if (flagName.equals("directory")) {
+                    baseDir = flagValue;
+                }
+            }
+        }
+
         ExecutorService executorService = Executors.newFixedThreadPool(4);
         try (ServerSocket serverSocket = new ServerSocket(4221)) {
 
@@ -66,6 +81,30 @@ class SocketProcessor implements Runnable {
                         response = "HTTP/1.1 200 OK\r\n" +
                                 "Content-Type: text/plain\r\n" +
                                 "Content-Length: " + sz + "\r\n\r\n" + content;
+                    }
+                }
+            } else if (statusLine[1].startsWith("/files/")) {
+                System.out.println("Inside /files");
+                String fileName = statusLine[1].substring(7);
+                File file = new File(Main.baseDir + fileName);
+                if (!file.exists()) {
+                    response = "HTTP/1.1 404 Not Found\r\n\r\n";
+                } else {
+                    try (FileInputStream fis = new FileInputStream(file)) {
+                        byte[] buff = new byte[1024];
+                        int read;
+                        StringBuilder sb = new StringBuilder();
+                        while ((read = fis.read(buff)) != -1) {
+                            sb.append(new String(buff, 0, read));
+                        }
+
+                        String content = sb.toString();
+                        long sz = file.length();
+                        response = "HTTP/1.1 200 OK\r\n" +
+                                "Content-Type: application/octet-stream\r\n" +
+                                "Content-Length: " + sz + "\r\n\r\n" + content;
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
                     }
                 }
             } else {
