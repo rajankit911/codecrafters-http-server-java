@@ -1,6 +1,7 @@
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
@@ -87,26 +88,38 @@ class SocketProcessor implements Runnable {
                 System.out.println("Inside /files");
                 String fileName = statusLine[1].substring(7);
                 File file = new File(Main.baseDir + fileName);
-                if (!file.exists()) {
-                    response = "HTTP/1.1 404 Not Found\r\n\r\n";
-                } else {
-                    try (FileInputStream fis = new FileInputStream(file)) {
-                        byte[] buff = new byte[1024];
-                        int read;
-                        StringBuilder sb = new StringBuilder();
-                        while ((read = fis.read(buff)) != -1) {
-                            sb.append(new String(buff, 0, read));
-                        }
+                if ("GET".equals(statusLine[0])) {
+                    if (!file.exists()) {
+                        response = "HTTP/1.1 404 Not Found\r\n\r\n";
+                    } else {
+                        try (FileInputStream fis = new FileInputStream(file)) {
+                            byte[] buff = new byte[1024];
+                            int read;
+                            StringBuilder sb = new StringBuilder();
+                            while ((read = fis.read(buff)) != -1) {
+                                sb.append(new String(buff, 0, read));
+                            }
 
-                        String content = sb.toString();
-                        long sz = file.length();
-                        response = "HTTP/1.1 200 OK\r\n" +
-                                "Content-Type: application/octet-stream\r\n" +
-                                "Content-Length: " + sz + "\r\n\r\n" + content;
+                            String content = sb.toString();
+                            long sz = file.length();
+                            response = "HTTP/1.1 200 OK\r\n" +
+                                    "Content-Type: application/octet-stream\r\n" +
+                                    "Content-Length: " + sz + "\r\n\r\n" + content;
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                } else if ("POST".equals(statusLine[0])) {
+                    String payload = parts[parts.length - 1];
+                    System.out.println("payload data :: " + payload);
+                    try (FileOutputStream fos = new FileOutputStream(file)) {
+                        fos.write(payload.getBytes());
+                        response = "HTTP/1.1 201 Created\r\n\r\n";
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
                 }
+
             } else {
                 System.out.println("Inside Not found");
                 response = "HTTP/1.1 404 Not Found\r\n\r\n";
