@@ -26,8 +26,14 @@ public class Main {
                 String[] parts = receivedData.split("\r\n");
                 String[] statusLine = parts[0].split(" ");
                 System.out.println("URL: " + statusLine[1]);
-                if ("/".equals(statusLine[1])) {
+                if (statusLine[1].equals("/")) {
                     response = "HTTP/1.1 200 OK\r\n\r\n";
+                } else if (statusLine[1].startsWith("/echo/")) {
+                    String content = statusLine[1].substring(6);
+                    int sz = content.length();
+                    response = "HTTP/1.1 200 OK\r\n" +
+                            "Content-Type: text/plain\r\n" +
+                            "Content-Length: " + sz + "\r\n\r\n" + content;
                 } else {
                     response = "HTTP/1.1 404 Not Found\r\n\r\n";
                 }
