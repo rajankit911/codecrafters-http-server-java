@@ -69,16 +69,23 @@ class SocketProcessor implements Runnable {
             } else if (statusLine[1].startsWith("/echo/")) {
                 System.out.println("Inside /echo");
                 boolean clientEncoding = false;
-                String compressionScheme = "";
+                String[] compressionSchemes = null;
                 for (String part : parts) {
                     if (part.toLowerCase().startsWith("accept-encoding: ")) {
                         clientEncoding = true;
-                        compressionScheme = part.substring(17);
+                        compressionSchemes = part.substring(17).split(", ");
                     }
                 }
 
                 if (clientEncoding) {
-                    if ("gzip".equals(compressionScheme)) {
+                    boolean gzipEncoding = false;
+                    for (String compressionScheme : compressionSchemes) {
+                        if ("gzip".equals(compressionScheme)) {
+                            gzipEncoding = true;
+                        }
+                    }
+                    
+                    if (gzipEncoding) {
                         response = "HTTP/1.1 200 OK\r\n" +
                                 "Content-Type: text/plain\r\n" +
                                 "Content-Encoding: gzip\r\n\r\n";
