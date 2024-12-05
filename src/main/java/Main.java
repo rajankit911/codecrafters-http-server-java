@@ -68,11 +68,31 @@ class SocketProcessor implements Runnable {
                 response = "HTTP/1.1 200 OK\r\n\r\n";
             } else if (statusLine[1].startsWith("/echo/")) {
                 System.out.println("Inside /echo");
-                String content = statusLine[1].substring(6);
-                int sz = content.length();
-                response = "HTTP/1.1 200 OK\r\n" +
-                        "Content-Type: text/plain\r\n" +
-                        "Content-Length: " + sz + "\r\n\r\n" + content;
+                boolean clientEncoding = false;
+                String compressionScheme = "";
+                for (String part : parts) {
+                    if (part.toLowerCase().startsWith("accept-encoding: ")) {
+                        clientEncoding = true;
+                        compressionScheme = part.substring(17);
+                    }
+                }
+
+                if (clientEncoding) {
+                    if ("gzip".equals(compressionScheme)) {
+                        response = "HTTP/1.1 200 OK\r\n" +
+                                "Content-Type: text/plain\r\n" +
+                                "Content-Encoding: gzip\r\n\r\n";
+                    } else {
+                        response = "HTTP/1.1 200 OK\r\n" +
+                                "Content-Type: text/plain\r\n\r\n";
+                    }
+                } else {
+                    String content = statusLine[1].substring(6);
+                    int sz = content.length();
+                    response = "HTTP/1.1 200 OK\r\n" +
+                            "Content-Type: text/plain\r\n" +
+                            "Content-Length: " + sz + "\r\n\r\n" + content;
+                }
             } else if (statusLine[1].startsWith("/user-agent")) {
                 System.out.println("Inside /user-agent");
                 for (String part : parts) {
