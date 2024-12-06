@@ -1,15 +1,20 @@
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.zip.GZIPOutputStream;
 
 public class Main {
     public static String baseDir = "";
@@ -84,11 +89,26 @@ class SocketProcessor implements Runnable {
                             gzipEncoding = true;
                         }
                     }
-                    
+
                     if (gzipEncoding) {
+                        String content = statusLine[1].substring(6);
+                        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                        try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
+                            gzipOutputStream.write(content.getBytes());
+                        }
+
+                        byte[] compressedContent = byteArrayOutputStream.toByteArray();
+                        int sz = compressedContent.length;
                         response = "HTTP/1.1 200 OK\r\n" +
                                 "Content-Type: text/plain\r\n" +
-                                "Content-Encoding: gzip\r\n\r\n";
+                                "Content-Encoding: gzip\r\n" +
+                                "Content-Length: " + sz + "\r\n\r\n";
+
+                        this.socket.getOutputStream().write(response.getBytes(StandardCharsets.UTF_8));
+                        this.socket.getOutputStream().write(compressedContent);
+                        this.socket.getOutputStream().close();
+                        return;
+
                     } else {
                         response = "HTTP/1.1 200 OK\r\n" +
                                 "Content-Type: text/plain\r\n\r\n";
@@ -157,6 +177,7 @@ class SocketProcessor implements Runnable {
 
         try {
             this.socket.getOutputStream().write(response.getBytes(StandardCharsets.UTF_8));
+            this.socket.getOutputStream().close();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
